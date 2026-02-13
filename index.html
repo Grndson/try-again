@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marion's Valentine 💅</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --pink:       #ff6b9d;
+  --pink-light: #ffb3d0;
+  --pink-dark:  #d63678;
+  --lilac:      #c084fc;
+  --lilac-dark: #9333ea;
+  --peach:      #ffedd5;
+  --cream:      #fff5fb;
+  --text-dark:  #2d1b35;
+  --text-mid:   #6d3a5a;
+  --gold:       #f59e0b;
+  --teal:       #2dd4bf;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--text-dark);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='20'%3E💅%3C/text%3E%3C/svg%3E") 12 12, auto;
+}
+
+/* ── CANVAS ── */
+#bg-canvas {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+}
+
+/* ── SCREENS ── */
+.screen {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 24px; z-index: 10; text-align: center;
+}
+.screen.active { display: flex; }
+
+/* ── FRAME CORNERS ── */
+.frame-corner {
+  position: fixed; width: 90px; height: 90px;
+  z-index: 5; pointer-events: none; opacity: 0.5;
+}
+.frame-corner svg { width: 100%; height: 100%; }
+.fc-tl { top: 10px; left: 10px; }
+.fc-tr { top: 10px; right: 10px; transform: scaleX(-1); }
+.fc-bl { bottom: 10px; left: 10px; transform: scaleY(-1); }
+.fc-br { bottom: 10px; right: 10px; transform: scale(-1); }
+
+/* ══════════════════════════
+   GAME SCREEN
+══════════════════════════ */
+#game { overflow: hidden; }
+
+#game h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.6rem, 5vw, 2.8rem);
+  font-weight: 700;
+  color: var(--pink-dark);
+  margin-bottom: 4px;
+  animation: fadeDown 0.8s ease both;
+  line-height: 1.2;
+}
+#game .subtitle {
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lilac-dark);
+  margin-bottom: 28px;
+  animation: fadeDown 0.8s 0.12s ease both;
+}
+
+/* progress ring */
+.progress-wrap {
+  position: relative; width: 120px; height: 120px;
+  margin-bottom: 22px;
+  animation: fadeUp 0.8s 0.25s ease both;
+}
+.progress-wrap svg { transform: rotate(-90deg); }
+.progress-track { fill: none; stroke: #ffd6e8; stroke-width: 6; }
+.progress-ring {
+  fill: none;
+  stroke: url(#ringGrad);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 314;
+  stroke-dashoffset: 314;
+  transition: stroke-dashoffset 0.4s cubic-bezier(.34,1.56,.64,1);
+}
+.progress-label {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.progress-label span {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem; font-weight: 700;
+  color: var(--pink-dark); line-height: 1;
+}
+.progress-label small {
+  font-size: 0.6rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--lilac-dark);
+  margin-top: 3px;
+}
+
+.hint-text {
+  font-size: 0.7rem; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--pink-light);
+  animation: pulse 2.2s ease-in-out infinite;
+  margin-bottom: 14px;
+}
+
+/* teaser tag */
+.teaser-tag {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--lilac), var(--pink));
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(196,84,252,0.3);
+  animation: fadeUp 0.8s 0.4s ease both;
+}
+
+/* ── FALLING ITEMS ── */
+.heart {
+  position: fixed; top: -60px;
+  cursor: pointer; user-select: none;
+  animation: floatDown linear forwards;
+  will-change: transform;
+  z-index: 20;
+  transition: transform 0.1s;
+}
+.heart:hover { transform: scale(1.4) rotate(10deg); }
+.heart.caught { animation: pop 0.35s ease forwards !important; }
+
+@keyframes floatDown {
+  0%   { transform: translateY(0) rotate(-10deg); opacity: 1; }
+  40%  { transform: translateY(40vh) rotate(10deg) scale(1.05); opacity: 0.9; }
+  100% { transform: translateY(115vh) rotate(-6deg); opacity: 0; }
+}
+@keyframes pop {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(2.4) rotate(15deg); opacity: 0.7; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* sparkle */
+.sparkle {
+  position: fixed; pointer-events: none;
+  z-index: 30; animation: sparkleOut 0.6s ease forwards;
+  font-size: 20px;
+}
+@keyframes sparkleOut {
+  0%   { opacity: 1; transform: scale(0.4) translateY(0); }
+  100% { opacity: 0; transform: scale(1.8) translateY(-50px); }
+}
+
+/* ══════════════════════════
+   MESSAGE SCREEN (card)
+══════════════════════════ */
+#message { gap: 0; }
+
+.card {
+  background: white;
+  border-radius: 28px;
+  padding: 36px 32px 32px;
+  max-width: 460px; width: 100%;
+  box-shadow: 0 28px 70px rgba(255,107,157,0.15), 0 6px 28px rgba(192,132,252,0.1);
+  position: relative; overflow: hidden;
+  animation: cardIn 0.75s cubic-bezier(.34,1.26,.64,1) both;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 5px;
+  background: linear-gradient(90deg, var(--pink-light), var(--pink), var(--lilac), var(--pink), var(--pink-light));
+  background-size: 250% 100%;
+  animation: shimmer 3.5s linear infinite;
+}
+
+.card-decor { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: 28px; }
+.card-decor span { position: absolute; font-size: 16px; opacity: 0.07; }
+
+.card-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--lilac), var(--pink-dark));
+  color: white; font-size: 0.6rem; letter-spacing: 0.18em;
+  text-transform: uppercase; padding: 5px 14px;
+  border-radius: 20px; margin-bottom: 12px;
+}
+
+.card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.5rem, 4.5vw, 2.1rem);
+  font-weight: 700; font-style: italic;
+  color: var(--pink-dark);
+  margin-bottom: 16px; line-height: 1.2;
+}
+
+.avatar-wrap {
+  width: 130px; height: 130px; border-radius: 50%;
+  margin: 0 auto 18px; overflow: hidden;
+  border: 4px solid var(--pink-light);
+  box-shadow: 0 8px 28px rgba(255,107,157,0.25);
+  background: linear-gradient(135deg, #ffb3d0, #e9d5ff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 58px;
+}
+.avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+
+.divider {
+  display: flex; align-items: center; gap: 8px;
+  justify-content: center; margin: 14px 0;
+  color: var(--gold); font-size: 0.65rem; letter-spacing: 0.08em;
+}
+.divider::before, .divider::after {
+  content: ''; height: 1px; width: 55px;
+}
+.divider::before { background: linear-gradient(90deg, transparent, var(--gold)); }
+.divider::after  { background: linear-gradient(90deg, var(--gold), transparent); }
+
+.card-body {
+  font-size: 0.86rem; line-height: 1.95;
+  color: var(--text-mid); font-weight: 400;
+  margin-bottom: 24px;
+}
+.card-body em {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 1.06em;
+  color: var(--pink);
+}
+.card-body .tea {
+  display: inline-block;
+  background: linear-gradient(90deg, #fff0f7, #f3e8ff);
+  border-left: 3px solid var(--lilac);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px; margin: 8px 0;
+  font-size: 0.82rem; color: var(--lilac-dark);
+  font-style: italic; text-align: left; width: 100%;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 28px;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: white; border: none; border-radius: 50px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.73rem; font-weight: 500;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(214,54,120,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 12px 30px rgba(214,54,120,0.4); }
+.btn:active { transform: scale(0.97); }
+
+/* ══════════════════════════
+   END SCREEN
+══════════════════════════ */
+#end .end-wrap {
+  max-width: 460px;
+  background: white; border-radius: 28px;
+  padding: 40px 32px;
+  box-shadow: 0 24px 70px rgba(255,107,157,0.15);
+  position: relative; overflow: hidden;
+  animation: cardIn 0.75s cubic-bezier(.34,1.26,.64,1) both;
+}
+#end .end-wrap::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 5px;
+  background: linear-gradient(90deg, var(--lilac), var(--pink), var(--gold), var(--pink), var(--lilac));
+  background-size: 250% 100%;
+  animation: shimmer 3.5s linear infinite;
+}
+
+.trophy-emoji {
+  font-size: 64px; display: block; margin-bottom: 12px;
+  animation: wiggle 1.2s ease-in-out infinite;
+}
+
+#end h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.4rem, 4.5vw, 2rem);
+  font-weight: 700; font-style: italic;
+  color: var(--pink-dark); margin-bottom: 6px;
+}
+
+#end .roast {
+  font-size: 0.82rem; color: var(--text-mid);
+  font-weight: 400; line-height: 1.85;
+  margin-bottom: 10px;
+}
+#end .roast em {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; color: var(--pink);
+}
+#end .roast .bold-tease {
+  font-weight: 500; color: var(--lilac-dark);
+}
+
+.countdown-box {
+  background: linear-gradient(135deg, #fff0f7, #f3e8ff);
+  border-radius: 16px; padding: 18px 20px;
+  margin: 18px 0; border: 1px solid #ffd6e8;
+}
+.countdown-box .cb-label {
+  font-size: 0.6rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--lilac-dark);
+  margin-bottom: 10px; display: block;
+}
+.countdown-box .cb-units {
+  display: flex; justify-content: center; gap: 14px;
+}
+.cb-unit { display: flex; flex-direction: column; align-items: center; }
+.cb-unit .num {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem; font-weight: 700;
+  color: var(--pink-dark); line-height: 1;
+}
+.cb-unit .lbl {
+  font-size: 0.55rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--lilac-dark);
+  margin-top: 2px;
+}
+.cb-sep {
+  font-size: 1.4rem; color: var(--pink-light);
+  align-self: flex-start; margin-top: 4px;
+}
+
+#end .signature {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 1.1rem;
+  color: var(--pink); margin-top: 18px;
+  display: block;
+}
+
+/* ── CONFETTI ── */
+.confetto {
+  position: fixed; pointer-events: none;
+  border-radius: 2px; z-index: 50;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+/* ── KEYFRAMES ── */
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(44px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.45; } 50% { opacity: 1; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-6deg); }
+  50%       { transform: rotate(6deg); }
+}
+
+@media (max-width: 480px) {
+  .card, #end .end-wrap { padding: 26px 18px; border-radius: 20px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- SVG gradient for ring -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ff6b9d"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- frame corners -->
+<div class="frame-corner fc-tl">
+  <svg viewBox="0 0 90 90" fill="none">
+    <path d="M5 85 L5 5 L85 5" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+    <path d="M5 55 L5 5 L55 5" stroke="#ff6b9d" stroke-width="0.8" fill="none" opacity="0.5"/>
+    <circle cx="5" cy="5" r="3.5" fill="#f59e0b"/>
+    <text x="16" y="30" font-size="16" fill="#ff6b9d" opacity="0.6">✦</text>
+    <text x="30" y="16" font-size="11" fill="#c084fc" opacity="0.5">✿</text>
+  </svg>
+</div>
+<div class="frame-corner fc-tr">
+  <svg viewBox="0 0 90 90" fill="none">
+    <path d="M5 85 L5 5 L85 5" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+    <path d="M5 55 L5 5 L55 5" stroke="#ff6b9d" stroke-width="0.8" fill="none" opacity="0.5"/>
+    <circle cx="5" cy="5" r="3.5" fill="#f59e0b"/>
+    <text x="16" y="30" font-size="16" fill="#ff6b9d" opacity="0.6">✦</text>
+    <text x="30" y="16" font-size="11" fill="#c084fc" opacity="0.5">✿</text>
+  </svg>
+</div>
+<div class="frame-corner fc-bl">
+  <svg viewBox="0 0 90 90" fill="none">
+    <path d="M5 85 L5 5 L85 5" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+    <circle cx="5" cy="5" r="3.5" fill="#f59e0b"/>
+    <text x="16" y="30" font-size="16" fill="#ff6b9d" opacity="0.6">✦</text>
+  </svg>
+</div>
+<div class="frame-corner fc-br">
+  <svg viewBox="0 0 90 90" fill="none">
+    <path d="M5 85 L5 5 L85 5" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+    <circle cx="5" cy="5" r="3.5" fill="#f59e0b"/>
+    <text x="16" y="30" font-size="16" fill="#ff6b9d" opacity="0.6">✦</text>
+  </svg>
+</div>
+
+<!-- ░░░ GAME SCREEN ░░░ -->
+<div id="game" class="screen active">
+  <h1>Marion, catch your<br>Valentine's hearts 💅</h1>
+  <p class="subtitle">Since a man won't give them to you — I will</p>
+
+  <div class="progress-wrap">
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      <circle class="progress-track" cx="60" cy="60" r="50"/>
+      <circle class="progress-ring" id="ring" cx="60" cy="60" r="50"/>
+    </svg>
+    <div class="progress-label">
+      <span id="count">0</span>
+      <small>of 10</small>
+    </div>
+  </div>
+
+  <p class="hint-text">✦ tap before they escape like he did ✦</p>
+  <span class="teaser-tag">🎀 a message awaits you at the end</span>
+</div>
+
+<!-- ░░░ MESSAGE SCREEN ░░░ -->
+<div id="message" class="screen">
+  <div class="card">
+    <div class="card-decor" id="card-decor"></div>
+
+    <span class="card-badge">✦ exclusively for Marion ✦</span>
+
+    <div class="avatar-wrap">
+      <!-- swap 👑 for Marion's photo: <img src="marion.jpg" alt="Marion"> -->
+      👑
+    </div>
+
+    <h2 class="card-title">Happy Valentine's Day,<br>my favourite single girl</h2>
+
+    <div class="divider">✦</div>
+
+    <p class="card-body">
+      Okay, real talk for a second —<br>
+      you are <em>genuinely one of the most amazing</em><br>
+      people I know, Marion.<br><br>
+      You are funny, beautiful, smart,<br>
+      and way too good for any man<br>
+      who hasn't figured that out yet. 👀<br><br>
+      <span class="tea">
+        "They don't deserve her anyway." — everyone who has ever met you
+      </span>
+    </p>
+
+    <button class="btn" onclick="nextScreen()">
+      <span>There's more</span> <span>😭</span>
+    </button>
+  </div>
+</div>
+
+<!-- ░░░ END SCREEN ░░░ -->
+<div id="end" class="screen">
+  <div class="end-wrap">
+    <span class="trophy-emoji">🏆</span>
+    <h2>Survived Valentine's solo<br>— again!</h2>
+
+    <div class="divider">✦</div>
+
+    <p class="roast">
+      Listen, Marion. Another Valentine's Day has come and gone<br>
+      and you are still out here <em>thriving</em> in your singleness.<br><br>
+      It's giving <span class="bold-tease">unbothered. iconic. unavailable.</span><br><br>
+      Somewhere out there, your man is busy being lost —<br>
+      probably can't even find his keys, let alone <em>a woman like you.</em><br><br>
+      But don't worry babe, I did the math for you:
+    </p>
+
+    <div class="countdown-box">
+      <span class="cb-label">⏳ days until Valentine's Day 2027</span>
+      <div class="cb-units">
+        <div class="cb-unit">
+          <span class="num" id="cd-days">—</span>
+          <span class="lbl">days</span>
+        </div>
+        <span class="cb-sep">:</span>
+        <div class="cb-unit">
+          <span class="num" id="cd-hrs">—</span>
+          <span class="lbl">hours</span>
+        </div>
+        <span class="cb-sep">:</span>
+        <div class="cb-unit">
+          <span class="num" id="cd-mins">—</span>
+          <span class="lbl">mins</span>
+        </div>
+        <span class="cb-sep">:</span>
+        <div class="cb-unit">
+          <span class="num" id="cd-secs">—</span>
+          <span class="lbl">secs</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="roast">
+      You have <em>all of that time</em> to find him, sis. 😂<br>
+      No pressure. (A little pressure.)
+    </p>
+
+    <span class="signature">Love you always, bestie 💖</span>
+  </div>
+</div>
+
+
+<script>
+/* ─── CONFIG ─── */
+const TARGET = 10;
+const ITEMS  = ['💕','🩷','💗','✨','💅','👑','🌸','💜','🎀','💖'];
+const CONFETTI_COLORS = ['#ff6b9d','#ffb3d0','#c084fc','#f59e0b','#d63678','#e9d5ff','#ffd6e8'];
+
+let caught = 0, spawnInterval = null, gameOver = false;
+const ring   = document.getElementById('ring');
+const countEl= document.getElementById('count');
+const CIRC   = 2 * Math.PI * 50;
+
+/* ─── BACKGROUND CANVAS ─── */
+const canvas = document.getElementById('bg-canvas');
+const ctx    = canvas.getContext('2d');
+let particles = [];
+
+function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+function initP() {
+  particles = [];
+  const n = Math.floor((canvas.width * canvas.height) / 16000);
+  for (let i = 0; i < n; i++) particles.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: 1 + Math.random() * 2.5,
+    alpha: 0.06 + Math.random() * 0.14,
+    speed: 0.12 + Math.random() * 0.28,
+    angle: Math.random() * Math.PI * 2,
+    wobble: Math.random() * Math.PI * 2,
+    hue: Math.random() > 0.5 ? '255,107,157' : '192,132,252',
+  });
+}
+
+function drawBg() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // diagonal gradient
+  const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  g.addColorStop(0,   'rgba(255,240,248,0.6)');
+  g.addColorStop(0.5, 'rgba(255,250,255,0.3)');
+  g.addColorStop(1,   'rgba(243,232,255,0.5)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  particles.forEach(p => {
+    p.wobble += 0.013;
+    p.x += Math.cos(p.angle) * p.speed + Math.sin(p.wobble) * 0.35;
+    p.y -= p.speed * 0.4;
+    if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
+    if (p.x < -10)  p.x = canvas.width + 10;
+    if (p.x > canvas.width + 10) p.x = -10;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${p.hue},${p.alpha})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(drawBg);
+}
+
+resize(); initP(); drawBg();
+window.addEventListener('resize', () => { resize(); initP(); });
+
+/* ─── CARD DECORATIONS ─── */
+function decorateCard() {
+  const wrap = document.getElementById('card-decor');
+  const emojis = ['💅','✨','🌸','👑','💕','🎀'];
+  const pos = [
+    {top:'7%',left:'5%'},{top:'10%',right:'7%'},
+    {top:'80%',left:'4%'},{bottom:'8%',right:'5%'},
+    {top:'45%',left:'2%'},{top:'42%',right:'2%'},
+  ];
+  pos.forEach(p => {
+    const s = document.createElement('span');
+    s.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    Object.assign(s.style, p);
+    wrap.appendChild(s);
+  });
+}
+decorateCard();
+
+/* ─── RING UPDATE ─── */
+function updateRing(n) {
+  ring.style.strokeDashoffset = CIRC - (n / TARGET) * CIRC;
+}
+
+/* ─── SPAWN ─── */
+function spawnHeart() {
+  if (gameOver) return;
+  const el = document.createElement('div');
+  el.className = 'heart';
+  el.textContent = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+  const dur  = 3.2 + Math.random() * 3.8;
+  const size = 24 + Math.random() * 22;
+  el.style.cssText = `left:${5 + Math.random()*88}vw;font-size:${size}px;animation-duration:${dur}s`;
+  el.addEventListener('click', () => catchHeart(el));
+  el.addEventListener('touchstart', e => { e.preventDefault(); catchHeart(el); }, { passive: false });
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), dur * 1000 + 200);
+}
+
+function catchHeart(el) {
+  if (el.dataset.caught) return;
+  el.dataset.caught = '1';
+  caught++; countEl.textContent = caught; updateRing(caught);
+  const r = el.getBoundingClientRect();
+  addSparkle(r.left + r.width/2, r.top + r.height/2);
+  el.classList.add('caught');
+  setTimeout(() => el.remove(), 400);
+  if (caught >= TARGET) { gameOver = true; clearInterval(spawnInterval); setTimeout(showMessage, 650); }
+}
+
+function addSparkle(x, y) {
+  const sp = document.createElement('div');
+  sp.className = 'sparkle';
+  sp.textContent = ['✨','💫','⭐','🌟'][Math.floor(Math.random()*4)];
+  sp.style.cssText = `left:${x-10}px;top:${y-10}px`;
+  document.body.appendChild(sp);
+  setTimeout(() => sp.remove(), 700);
+}
+
+/* ─── TRANSITIONS ─── */
+function showMessage() {
+  document.getElementById('game').classList.remove('active');
+  document.getElementById('message').classList.add('active');
+  launchConfetti(45);
+}
+function nextScreen() {
+  document.getElementById('message').classList.remove('active');
+  document.getElementById('end').classList.add('active');
+  launchConfetti(90);
+  startCountdown();
+}
+
+/* ─── CONFETTI ─── */
+function launchConfetti(n) {
+  const extras = ['💅','👑','💕'];
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      // mix shapes and emoji
+      if (Math.random() > 0.7) {
+        el.style.cssText = `
+          position:fixed; left:${Math.random()*100}vw; top:-10px;
+          font-size:${14+Math.random()*10}px; z-index:50; pointer-events:none;
+          animation: confettiFall ${2+Math.random()*3}s linear forwards;
+          animation-delay:${Math.random()*0.6}s;
+        `;
+        el.textContent = extras[Math.floor(Math.random()*extras.length)];
+      } else {
+        el.className = 'confetto';
+        const s = 5 + Math.random() * 9;
+        el.style.cssText = `
+          left:${Math.random()*100}vw; top:-10px;
+          width:${s}px; height:${s*(0.4+Math.random()*0.9)}px;
+          background:${CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)]};
+          animation-duration:${2.2+Math.random()*2.8}s;
+          animation-delay:${Math.random()*0.5}s;
+          border-radius:${Math.random()>0.5?'50%':'3px'};
+        `;
+      }
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5800);
+    }, i * 28);
+  }
+}
+
+/* ─── COUNTDOWN TO NEXT VALENTINE'S ─── */
+function startCountdown() {
+  function tick() {
+    const now    = new Date();
+    const target = new Date('2027-02-14T00:00:00');
+    let diff = Math.max(0, target - now);
+    const days = Math.floor(diff / 86400000); diff -= days * 86400000;
+    const hrs  = Math.floor(diff / 3600000);  diff -= hrs * 3600000;
+    const mins = Math.floor(diff / 60000);    diff -= mins * 60000;
+    const secs = Math.floor(diff / 1000);
+    document.getElementById('cd-days').textContent = String(days).padStart(3,'0');
+    document.getElementById('cd-hrs').textContent  = String(hrs).padStart(2,'0');
+    document.getElementById('cd-mins').textContent = String(mins).padStart(2,'0');
+    document.getElementById('cd-secs').textContent = String(secs).padStart(2,'0');
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+/* ─── INIT ─── */
+updateRing(0);
+spawnInterval = setInterval(spawnHeart, 850);
+setTimeout(spawnHeart, 80);
+setTimeout(spawnHeart, 380);
+setTimeout(spawnHeart, 680);
+</script>
+</body>
+</html>git add index.htmlgit add index.html
